@@ -46,7 +46,7 @@ GLM是一个只有头文件的库，所以只需要下载[最新版本](https://
 
 现在你已经安装好了所有的依赖，我们可以为Vulkan配置一个基础的Visual Studio项目然后写一点代码来确定每个部分是否都在正常工作。
 
-启动Visual Studio，新建一个`Windows桌面应用程序`项目，起一个项目名字，然后点击“确定”。
+启动Visual Studio，新建一个`Windows 桌面向导`项目，起一个项目名字，然后点击“确定”。
 
 ![](https://vulkan-tutorial.com/images/vs_new_cpp_project.png)
 
