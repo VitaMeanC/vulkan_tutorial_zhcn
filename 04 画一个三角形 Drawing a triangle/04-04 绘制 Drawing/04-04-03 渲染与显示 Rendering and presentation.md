@@ -253,7 +253,7 @@ void mainLoop() {
 
 你也可以使用[`vkQueueWaitIdle`](https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkQueueWaitIdle.html)来等待某一特定的命令队列执行完成。这些函数是执行同步操作的基本方法。现在在关闭窗口的时候你会看到程序会退出而不产生错误了。
 
-## 飞行帧
+## 处理中的帧
 
 如果你在启用了验证层的情况下运行你的程序，并且观察程序的内存占用量，你或许会发现它在缓慢增长。原因是程序在`drawFrame`函数中飞快地进行提交操作，但是没有检查这些操作是否完成了。如果CPU的提交操作太快导致GPU跟不上的话，队列就会缓慢地被这些操作占用。更糟的是，我们在重复使用`imageAvailableSemaphore`和`renderFinishedSemaphore`同时处理多个帧。
 
@@ -269,7 +269,7 @@ void drawFrame() {
 }
 ```
 
-然而，这种方式可能使我们无法最佳化利用GPU，因为现在整个图形渲染管线在同一时间只处理一个帧。这些阶段只能在当前帧处理结束、处于空闲状态时才能处理下一个帧。我们现在会扩展我们的程序来允许多个帧进入“飞行模式”（in-flight），同时仍然限制累积起来的操作总量。
+然而，这种方式可能使我们无法最佳化利用GPU，因为现在整个图形渲染管线在同一时间只处理一个帧。这些阶段只能在当前帧处理结束、处于空闲状态时才能处理下一个帧。我们现在会扩展我们的程序来允许多个帧进入“正在处理”（in-flight）模式，同时仍然限制累积起来的操作总量。
 
 首先，在程序的最顶端添加一个常量来定义有多少帧需要被同时处理：
 
@@ -352,7 +352,7 @@ void drawFrame() {
 
 通过使用取余（%）运算符，我们可以确保帧索引的循环处于每`MAX_FRAMES_IN_FLIGHT`个已排队帧的后面。
 
-尽管我们已经设置好了同时处理多个帧所必需的对象，现在还是无法避免比`MAX_FRAMES_IN_FLIGHT`更多的帧被提交。现在这里只有GPU-GPU的同步，而没有CPU-CPU的同步来继续跟踪提交操作的后续情况。有可能出现需要使用#0（第0个）帧，但#0帧仍处于飞行模式的情况。
+尽管我们已经设置好了同时处理多个帧所必需的对象，现在还是无法避免比`MAX_FRAMES_IN_FLIGHT`更多的帧被提交。现在这里只有GPU-GPU的同步，而没有CPU-CPU的同步来继续跟踪提交操作的后续情况。有可能出现需要使用#0（第0个）帧，但#0帧仍处于正在处理模式的情况。
 
 为实现CPU-CPU的同步，Vulkan提供了第二种同步原语（synchronization primitive），称为屏障（fence）。在某种意义上，屏障类似于信号量：它们都可以被改变信号和等待。但是这次我们实际上是在我们自己的代码上面等待屏障。首先先来为每个帧创建一个屏障：
 
@@ -428,7 +428,7 @@ void drawFrame() {
 
 [`vkWaitForFences`](https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkWaitForFences.html)函数接受一个屏障数组并且在返回前等待其中的一个或所有屏障改变了信号。我们在这里传递的`VK_TRUE`代表了我们想要等待所有的屏障，但是在只有一个屏障的情况下这个选项造不成什么影响。就像`vkAcquireNextImageKHR`一样，这个函数也需要一个超时时间。与信号量不同的是，我们需要通过调用[`vkResetFences`](https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkResetFences.html)函数来手动把屏障复位到无信号（unsignaled）状态。
 
-如果你现在运行程序，你会注意到有些奇怪。这个程序看起来没有绘制任何东西。开启了验证层的话，你会看到如下消息：
+如果你现在运行程序，你会发现有些奇怪。这个程序看起来没有绘制任何东西。开启了验证层的话，你会看到如下消息：
 
 ![](https://vulkan-tutorial.com/images/unsubmitted_fence.png)
 
